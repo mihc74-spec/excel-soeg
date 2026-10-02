@@ -119,7 +119,7 @@ function hi(v,term){const s=String(v??"");if(!term)return esc(s);const parts=s.s
 function setDoc(name){
  current=name;q.value="";filters.innerHTML="";results.innerHTML="";stats.textContent="";
  if(name==="7910"){
-  title.textContent="🔎 Doc. 7910";subtitle.textContent="Søg i alle lande, koder, locations og statusser.";q.placeholder="Søg fx EKDKZPZX, EKBICUPF, STOCKHOLM…";
+  title.textContent="🔎 Doc. 7910";subtitle.textContent="Søg i alle lande, koder, locations og statusser.";q.placeholder="SØG FX EKDK, LOOO, STOCKHOLM...";
   const countries=[...new Set(DATA.d7910.map(x=>x.country).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
   const statuses=[...new Set(DATA.d7910.map(x=>x.status).filter(Boolean))].sort();
   const c=document.createElement("select");c.id="country";c.innerHTML='<option value="">Alle lande</option>'+countries.map(x=>'<option>'+esc(x)+'</option>').join("");
