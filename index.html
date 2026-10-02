@@ -222,6 +222,33 @@ async function load8585FromGoogle(){
 }
 load8585FromGoogle();
 
+// Hent Telefonlisten direkte fra den publicerede Google Sheets/XLSX-fil.
+const GOOGLE_PHONE_URL="https://docs.google.com/spreadsheets/d/e/2PACX-1vRkvVeQtJ2cQGyIwyyhvtMEwwLlc5y4DeLkoLjEECG0RF9JHsxYQuGLuOF7dTaTgw/pub?output=xlsx";
+async function loadPhoneFromGoogle(){
+  try{
+    const response=await fetch(GOOGLE_PHONE_URL,{cache:"no-store"});
+    if(!response.ok) throw new Error("HTTP "+response.status);
+    const buffer=await response.arrayBuffer();
+    const wb=XLSX.read(buffer,{type:"array",cellDates:false});
+    const phone={};
+    for(const sheetName of wb.SheetNames){
+      const ws=wb.Sheets[sheetName];
+      const data=XLSX.utils.sheet_to_json(ws,{header:1,defval:"",raw:false});
+      if(!data.length) continue;
+      const headers=(data[0]||[]).map(v=>String(v??"").trim());
+      const rows=data.slice(1).filter(r=>r.some(v=>String(v??"").trim()!==""));
+      phone[sheetName]={headers,rows};
+    }
+    if(!Object.keys(phone).length) throw new Error("Ingen ark fundet");
+    DATA.phone=phone;
+    console.log("Telefonlisten hentet fra Google:",Object.keys(phone).length,"ark");
+    if(current==="phone") render();
+  }catch(err){
+    console.warn("Kunne ikke hente Telefonlisten fra Google. Den indbyggede kopi bruges i stedet.",err);
+  }
+}
+loadPhoneFromGoogle();
+
 </script>
 </body>
 </html>
