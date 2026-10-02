@@ -183,8 +183,10 @@ async function load7910FromGoogle(){
     }
     if(!rows.length) throw new Error("Ingen poster fundet");
     DATA.d7910=rows;
-    setDoc("7910");
     console.log("Doc. 7910 hentet fra Google:",rows.length,"poster");
+    // Opdater kun visningen, hvis brugeren stadig står på Doc. 7910.
+    // Ellers må en baggrundsindlæsning ikke skifte det valgte dokument.
+    if(current==="7910") render();
   }catch(err){
     console.warn("Kunne ikke hente Doc. 7910 fra Google. Den indbyggede kopi bruges i stedet.",err);
   }
