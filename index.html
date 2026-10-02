@@ -190,6 +190,38 @@ async function load7910FromGoogle(){
   }
 }
 load7910FromGoogle();
+
+// Hent Doc. 8585 direkte fra den publicerede Google Sheets/XLSX-fil.
+const GOOGLE_8585_URL="https://docs.google.com/spreadsheets/d/e/2PACX-1vQMoTdKzP_scfGdInUaCaY3ivws94k11x_G_U1phlr9P3Jy6YOPV8KllvxUWY60Fw/pub?output=xlsx";
+async function load8585FromGoogle(){
+  try{
+    const response=await fetch(GOOGLE_8585_URL,{cache:"no-store"});
+    if(!response.ok) throw new Error("HTTP "+response.status);
+    const buffer=await response.arrayBuffer();
+    const wb=XLSX.read(buffer,{type:"array",cellDates:false});
+    const rows=[];
+    for(const sheetName of wb.SheetNames){
+      const ws=wb.Sheets[sheetName];
+      const data=XLSX.utils.sheet_to_json(ws,{header:1,defval:"",raw:false});
+      // Doc. 8585 bruger første række som overskrift.
+      for(let i=1;i<data.length;i++){
+        const r=data[i]||[];
+        const designator=String(r[0]??"").trim();
+        const location=String(r[1]??"").trim();
+        if(!designator && !location) continue;
+        rows.push({sheet:sheetName,designator,location});
+      }
+    }
+    if(!rows.length) throw new Error("Ingen poster fundet");
+    DATA.d8585=rows;
+    console.log("Doc. 8585 hentet fra Google:",rows.length,"poster");
+    if(current==="8585") render();
+  }catch(err){
+    console.warn("Kunne ikke hente Doc. 8585 fra Google. Den indbyggede kopi bruges i stedet.",err);
+  }
+}
+load8585FromGoogle();
+
 </script>
 </body>
 </html>
