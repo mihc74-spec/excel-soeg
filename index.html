@@ -129,7 +129,7 @@ function setDoc(name){
   title.textContent="🔎 Doc. 8585";subtitle.textContent="Søg i designatorer og lokationer.";q.placeholder="Søg fx AAA, AAB, AVIATION…";
   const b=document.createElement("button");b.textContent="Ryd";b.onclick=()=>{q.value="";render()};filters.append(b);
  }else{
-  title.textContent="🔎 Telefonlisten";subtitle.textContent="Søg i alle telefonlister, lokationer, navne, telefonnumre og bemærkninger.";q.placeholder="Søg fx EKAH, Aarhus, +45, FIC…";
+  title.textContent="🔎 Telefonlisten";subtitle.textContent="Søg i alle telefonlister, lokationer, navne, telefonnumre og bemærkninger.";q.placeholder="SØG FX EKAH, AARHUS, FIC…";
   const b=document.createElement("button");b.textContent="Ryd";b.onclick=()=>{q.value="";render()};filters.append(b);
  }
  render();
@@ -148,7 +148,7 @@ function render8585(term){
  if(arr.length>500)stats.textContent+=" (viser de første 500)";
 }
 function renderPhone(term){
- let total=0,out="";for(const [sheet,obj] of Object.entries(DATA.phone)){const matches=obj.rows.filter(row=>row.join(" ").toLowerCase().includes(term.toLowerCase()));if(!matches.length)continue;total+=matches.length;out+=`<div class="result"><div class="phoneSheet">${hi(sheet,term)}</div>`;out+=matches.slice(0,200).map(row=>{let fields="";row.forEach((v,i)=>{if(!v)return;const h=obj.headers[i]||("Felt "+(i+1));fields+=`<div class="phoneField"><b>${esc(h)}:</b>${hi(v,term)}</div>`});return `<div class="phoneResult">${fields}</div>`}).join("");out+="</div>";}
+ let total=0,out="";for(const [sheet,obj] of Object.entries(DATA.phone)){const matches=obj.rows.filter(row=>row.join(" ").toLowerCase().includes(term.toLowerCase()));if(!matches.length)continue;total+=matches.length;out+=`<div class="result"><div class="phoneSheet">${hi(sheet,term)}</div>`;out+=matches.slice(0,200).map(row=>{let fields="";row.forEach(v=>{if(!String(v??"").trim())return;fields+=`<div class="phoneField">${hi(v,term)}</div>`});return `<div class="phoneResult">${fields}</div>`}).join("");out+="</div>";}
  stats.textContent=total+" resultat"+(total===1?"":"er");results.innerHTML=out||'<div class="empty">Ingen resultater fundet.</div>';
 }
 function render(){const term=q.value.trim();if(current==="7910")render7910(term);else if(current==="8585")render8585(term);else renderPhone(term);}
@@ -157,7 +157,7 @@ q.addEventListener("input",()=>{const pos=q.selectionStart,upper=q.value.toUpper
 setDoc("7910");
 
 // Hent Doc. 7910 direkte fra den publicerede Google Sheets/XLSX-fil.
-const GOOGLE_7910_URL="https://docs.google.com/spreadsheets/d/e/2PACX-1vRI9plEef0uubUlSFkh5PAXfrqEcJxXz7oj5rEj6nKeVOD4mOR7030q01mu9DOEOw/pub?output=xlsx";
+const GOOGLE_7910_URL="https://docs.google.com/spreadsheets/d/e/2PACX-1vRoh4FMYtSECcPofFlQ3UHMhTT2d1warRHYkJIHR589s8j3EHkUAyXKCZKT9vTICA/pub?output=xlsx";
 async function load7910FromGoogle(){
   try{
     const response=await fetch(GOOGLE_7910_URL,{cache:"no-store"});
@@ -194,7 +194,7 @@ async function load7910FromGoogle(){
 load7910FromGoogle();
 
 // Hent Doc. 8585 direkte fra den publicerede Google Sheets/XLSX-fil.
-const GOOGLE_8585_URL="https://docs.google.com/spreadsheets/d/e/2PACX-1vQMoTdKzP_scfGdInUaCaY3ivws94k11x_G_U1phlr9P3Jy6YOPV8KllvxUWY60Fw/pub?output=xlsx";
+const GOOGLE_8585_URL="https://docs.google.com/spreadsheets/d/e/2PACX-1vQkXN5jq3eN-IQn3TwGaOXcc-K5e592bKQxILo48PQsVUzu4wAyJplDPaDq7K1sFg/pub?output=xlsx";
 async function load8585FromGoogle(){
   try{
     const response=await fetch(GOOGLE_8585_URL,{cache:"no-store"});
@@ -225,7 +225,7 @@ async function load8585FromGoogle(){
 load8585FromGoogle();
 
 // Hent Telefonlisten direkte fra den publicerede Google Sheets/XLSX-fil.
-const GOOGLE_PHONE_URL="https://docs.google.com/spreadsheets/d/e/2PACX-1vRkvVeQtJ2cQGyIwyyhvtMEwwLlc5y4DeLkoLjEECG0RF9JHsxYQuGLuOF7dTaTgw/pub?output=xlsx";
+const GOOGLE_PHONE_URL="https://docs.google.com/spreadsheets/d/e/2PACX-1vSTwIDUTvkTuNNdzPlZSI4HND4KaJ1zwjri0WZyHMEt9cO0HMotq4ITe32Si59L4g/pub?output=xlsx";
 async function loadPhoneFromGoogle(){
   try{
     const response=await fetch(GOOGLE_PHONE_URL,{cache:"no-store"});
@@ -238,7 +238,8 @@ async function loadPhoneFromGoogle(){
       const data=XLSX.utils.sheet_to_json(ws,{header:1,defval:"",raw:false});
       if(!data.length) continue;
       const headers=(data[0]||[]).map(v=>String(v??"").trim());
-      const rows=data.slice(1).filter(r=>r.some(v=>String(v??"").trim()!==""));
+      const startRow=(sheetName.trim().toUpperCase()==="OPMET TELEFONLISTE")?3:1;
+      const rows=data.slice(startRow).filter(r=>r.some(v=>String(v??"").trim()!==""));
       phone[sheetName]={headers,rows};
     }
     if(!Object.keys(phone).length) throw new Error("Ingen ark fundet");
