@@ -273,20 +273,36 @@ async function loadRoutingFromGoogle(){
     const wb=XLSX.read(buffer,{type:"array",cellDates:false});
     const rows=[];
     const norm=v=>String(v??"").trim().toUpperCase().replace(/\s+/g," ");
+    const findHeaderRow=data=>{
+      for(let ri=0;ri<Math.min(data.length,30);ri++){
+        const row=data[ri]||[];
+        const nameCount=row.filter(v=>norm(v)==="NAME").length;
+        if(nameCount>=3) return ri;
+      }
+      return -1;
+    };
+    const findIdx=(headers,names)=>{
+      for(const wanted of names){
+        const i=headers.findIndex(h=>norm(h)===wanted);
+        if(i>=0)return i;
+      }
+      return -1;
+    };
     for(const sheetName of wb.SheetNames){
       const ws=wb.Sheets[sheetName];
       const data=XLSX.utils.sheet_to_json(ws,{header:1,defval:"",raw:false});
       if(!data.length) continue;
-      const headers=data[0]||[];
+      const headerRow=findHeaderRow(data);
+      if(headerRow<0) continue;
+      const headers=data[headerRow]||[];
       const nameIdx=[];
       headers.forEach((h,i)=>{if(norm(h)==="NAME")nameIdx.push(i);});
-      if(!nameIdx.length) continue;
-      const findIdx=(names)=>{for(const wanted of names){const i=headers.findIndex(h=>norm(h)===wanted);if(i>=0)return i;}return -1;};
-      const addressIdx=findIdx(["ADDRESS","AFTN ADDRESS","AFTN ADDRESS/ADDRESS"]);
-      const ctIdx=findIdx(["C/T","CT","C / T"]);
-      const typeIdx=findIdx(["TYPE"]);
-      const destIdx=findIdx(["DEST","DESTINATION"]);
-      for(let i=1;i<data.length;i++){
+      if(nameIdx.length<3) continue;
+      const addressIdx=findIdx(headers,["ADDRESS","AFTN ADDRESS","AFTN ADDRESS/ADDRESS"]);
+      const ctIdx=findIdx(headers,["C/T","CT","C / T"]);
+      const typeIdx=findIdx(headers,["TYPE"]);
+      const destIdx=findIdx(headers,["DEST","DESTINATION"]);
+      for(let i=headerRow+1;i<data.length;i++){
         const r=data[i]||[];
         const names=nameIdx.map(j=>String(r[j]??"").trim()).filter(Boolean);
         if(!names.length) continue;
