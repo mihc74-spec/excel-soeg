@@ -19,7 +19,7 @@ select,.search,button{font-family:inherit}select{width:100%;padding:12px;border:
 .search:focus{border-color:#1769e0}.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
 .row select{flex:1;min-width:145px}.row button{flex:0 0 auto}
 button{padding:11px 13px;border-radius:10px;border:1px solid #d5dbe1;background:#fff;font-size:12px}
-.stats{font-size:11px;color:#68737e;margin-top:10px}.result{padding:14px 0;border-top:1px solid #e8ebee}
+.stats{font-size:11px;color:#68737e;margin-top:10px}.routingMembers{margin-top:10px;font-size:22px;font-weight:700;line-height:1.45}.routingMembers div{margin:2px 0}.result{padding:14px 0;border-top:1px solid #e8ebee}
 .badge{display:inline-block;padding:4px 8px;border-radius:7px;background:#eef3f8;color:#31516d;font-size:12px;font-weight:700;margin-right:5px;margin-bottom:3px}
 .code{font-size:21px;font-weight:800;margin-top:4px;letter-spacing:.4px}.location{font-size:15px;margin-top:2px;line-height:1.35}
 .details{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin-top:9px;font-size:11px;color:#596571}
@@ -165,7 +165,7 @@ function renderAftn(term){
  if(!arr.length){results.innerHTML='<div class="empty">Ingen resultater fundet.</div>';return;}
  results.innerHTML=arr.slice(0,500).map(x=>{
    const members=(x.members||[]).filter(Boolean);
-   const memberHtml=members.length?`<div class="detail"><b>${x.type==="C"?"ADRESSER":"DESTINATIONER"}:</b><div style="margin-top:5px">${members.map(v=>`<div>${hi(v,needle)}</div>`).join("")}</div></div>`:"";
+   const memberHtml=members.length?`<div class="routingMembers">${members.map(v=>`<div>${hi(v,needle)}</div>`).join("")}</div>`:"";
    return `<div class="result">
      <div class="code"><b>ADDRESS:</b> ${hi(x.name,needle)}</div>
      <div class="details">
