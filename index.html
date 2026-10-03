@@ -156,10 +156,25 @@ function renderPhone(term){
 }
 function renderAftn(term){
  const needle=String(term||"").trim().toUpperCase();
- const arr=DATA.routing.filter(x=>{if(!needle)return true;return x.names.some(n=>String(n||"").trim().toUpperCase().startsWith(needle));});
+ const arr=DATA.routing.filter(x=>{
+   const name=String(x.name||"").trim().toUpperCase();
+   return !needle || name.startsWith(needle);
+ });
+ const typeText=t=>t==="C"?"C – Collective Address":t==="M"?"M – Multi Destination":t==="N"?"N – Normal Routing":t;
  stats.textContent=arr.length+" resultat"+(arr.length===1?"":"er");
  if(!arr.length){results.innerHTML='<div class="empty">Ingen resultater fundet.</div>';return;}
- results.innerHTML=arr.slice(0,500).map(x=>`<div class="result"><div class="code">${hi(x.address,needle)}</div>${x.name?`<div class="location"><b>NAME:</b> ${hi(x.name,needle)}</div>`:""}<div class="details">${x.ct?`<div class="detail"><b>C/T:</b> ${hi(x.ct,needle)}</div>`:""}${x.type?`<div class="detail"><b>TYPE:</b> ${hi(x.type,needle)}</div>`:""}${x.dest?`<div class="detail"><b>DEST:</b> ${hi(x.dest,needle)}</div>`:""}</div></div>`).join("");
+ results.innerHTML=arr.slice(0,500).map(x=>{
+   const members=(x.members||[]).filter(Boolean);
+   const memberHtml=members.length?`<div class="detail"><b>${x.type==="C"?"ADRESSER":"DESTINATIONER"}:</b><div style="margin-top:5px">${members.map(v=>`<div>${hi(v,needle)}</div>`).join("")}</div></div>`:"";
+   return `<div class="result">
+     <div class="code"><b>ADDRESS:</b> ${hi(x.name,needle)}</div>
+     <div class="details">
+       ${x.type?`<div class="detail"><b>TYPE:</b> ${hi(typeText(x.type),needle)}</div>`:""}
+       ${memberHtml}
+       ${x.dest?`<div class="detail"><b>DEST:</b> ${hi(x.dest,needle)}</div>`:""}
+     </div>
+   </div>`;
+ }).join("");
  if(arr.length>500)stats.textContent+=" (viser de første 500)";
 }
 function render(){const term=q.value.trim();if(current==="7910")render7910(term);else if(current==="8585")render8585(term);else if(current==="phone")renderPhone(term);else renderAftn(term);}
@@ -272,74 +287,55 @@ async function loadRoutingFromGoogle(){
     const buffer=await response.arrayBuffer();
     const wb=XLSX.read(buffer,{type:"array",cellDates:false});
     const rows=[];
-    const norm=v=>String(v??"").trim().toUpperCase().replace(/\s+/g," ");
-    const findHeaderRow=data=>{
-      for(let ri=0;ri<Math.min(data.length,30);ri++){
-        const row=data[ri]||[];
-        const nameCount=row.filter(v=>norm(v)==="NAME").length;
-        if(nameCount>=3) return ri;
-      }
-      return -1;
-    };
-    // Routing-filen består af gentagne grupper omkring hver NAME-kolonne.
-    // Find derfor ADDRESS/C/T/TYPE/DEST i samme gruppe som den pågældende NAME,
-    // i stedet for at bruge den første kolonne med den overskrift i hele arket.
-    const fieldForName=(headers,nameCol,labels)=>{
-      let best=-1,bestDist=999;
-      for(let i=0;i<headers.length;i++){
-        const h=norm(headers[i]);
-        const match=labels.some(label=>h===label || h.startsWith(label+" "));
-        if(!match) continue;
-        const dist=Math.abs(i-nameCol);
-        if(dist<bestDist){best=i;bestDist=dist;}
-      }
-      return best;
-    };
+    const norm=v=>String(v??"").trim().toUpperCase();
+
     for(const sheetName of wb.SheetNames){
-      const ws=wb.Sheets[sheetName];
-      const data=XLSX.utils.sheet_to_json(ws,{header:1,defval:"",raw:false});
-      if(!data.length) continue;
-      const headerRow=findHeaderRow(data);
+      const ws=XLSX.utils.sheet_to_json(wb.Sheets[sheetName],{header:1,defval:"",raw:false});
+      if(!ws.length) continue;
+
+      let headerRow=-1;
+      for(let ri=0;ri<Math.min(ws.length,30);ri++){
+        const nameCount=(ws[ri]||[]).filter(v=>norm(v)==="NAME").length;
+        if(nameCount>=3){headerRow=ri;break;}
+      }
       if(headerRow<0) continue;
-      const headers=data[headerRow]||[];
-      const nameIdx=[];
-      headers.forEach((h,i)=>{if(norm(h)==="NAME")nameIdx.push(i);});
-      if(nameIdx.length<3) continue;
 
-      // Opret én routing-post pr. NAME-kolonne, så hvert NAME får sin egen
-      // tilhørende Address, C/T, TYPE og DEST.
-      for(let i=headerRow+1;i<data.length;i++){
-        const r=data[i]||[];
-        for(const nameCol of nameIdx){
-          const name=String(r[nameCol]??"").trim();
-          if(!name) continue;
+      const headers=ws[headerRow]||[];
+      const nameCols=[];
+      headers.forEach((v,i)=>{if(norm(v)==="NAME") nameCols.push(i);});
 
-          const addressIdx=fieldForName(headers,nameCol,[
-            "ADDRESS","AFTN ADDRESS","AFTN ADDRESS/ADDRESS"
-          ]);
-          const ctIdx=fieldForName(headers,nameCol,["C/T","CT","C / T"]);
-          const typeIdx=fieldForName(headers,nameCol,["TYPE"]);
-          const destIdx=fieldForName(headers,nameCol,["DEST","DESTINATION"]);
+      // Hver routing-sektion består af NAME, C/M, TYPE, DEST.
+      // Ved C og M fortsætter C/M-listen på de efterfølgende rækker,
+      // hvor NAME er tomt, indtil næste NAME begynder.
+      for(const nameCol of nameCols){
+        let current=null;
+        for(let r=headerRow+1;r<ws.length;r++){
+          const row=ws[r]||[];
+          const name=String(row[nameCol]??"").trim();
+          const cm=String(row[nameCol+1]??"").trim();
+          const type=String(row[nameCol+2]??"").trim().toUpperCase();
+          const dest=String(row[nameCol+3]??"").trim();
 
-          const address=addressIdx>=0?String(r[addressIdx]??"").trim():"";
-          const ct=ctIdx>=0?String(r[ctIdx]??"").trim():"";
-          const type=typeIdx>=0?String(r[typeIdx]??"").trim():"";
-          const dest=destIdx>=0?String(r[destIdx]??"").trim():"";
-
-          rows.push({sheet:sheetName,name,address,ct,type,dest});
+          if(name){
+            current={sheet:sheetName,name,ct:cm,type,dest,members:[]};
+            if((type==="C" || type==="M") && cm) current.members.push(cm);
+            rows.push(current);
+          }else if(current && (current.type==="C" || current.type==="M") && cm){
+            current.members.push(cm);
+          }
         }
       }
     }
+
     if(!rows.length) throw new Error("Ingen routing-poster fundet");
     DATA.routing=rows;
-    console.log("AFTN Routing hentet fra Google:",rows.length,"poster");
+    console.log("AFTN Routing hentet fra Google:",rows.length,"routing-adresser");
     if(current==="routing") render();
   }catch(err){
     console.warn("Kunne ikke hente AFTN Routing fra Google.",err);
   }
 }
 loadRoutingFromGoogle();
-
 </script>
 </body>
 </html>
